@@ -2,6 +2,8 @@ import './css/styles.css';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import ImagesApiServer from './js/search-image';
 import LoadMoreBtn from './js/load-more-btn';
+import SimpleLightbox from 'simplelightbox';
+import '../node_modules/simplelightbox/dist/simple-lightbox.min.css';
 
 const refs = {
   searchInput: document.querySelector('#search-form'),
@@ -18,31 +20,43 @@ const loadMoreBtn = new LoadMoreBtn({
 function appendImagesToGallery(images) {
   const galleryItem = images
     .map(image => {
-      return `<div class="photo-card">
-  <img src="${image.webformatURL}" alt="${image.tags}" loading="lazy" />
-  <div class="info">
+      return `
+      <div class="photo-card">
+      <a href="${image.largeImageURL}">
+    <img src="${image.webformatURL}" alt="${image.tags}" loading="lazy" />
+    </a>
+    <div class="info">
     <p class="info-item">
-      <b>Likes</b> ${image.likes}
+    <b>Likes</b> ${image.likes}
     </p>
     <p class="info-item">
-      <b>Views</b> ${image.views}
+    <b>Views</b> ${image.views}
     </p>
     <p class="info-item">
-      <b>Comments</b> ${image.comments}
+    <b>Comments</b> ${image.comments}
     </p>
     <p class="info-item">
-      <b>Downloads</b> ${image.downloads}
+    <b>Downloads</b> ${image.downloads}
     </p>
-  </div>
-</div>`;
+    </div>
+    </div>
+    `;
     })
     .join('');
 
   refs.gallery.insertAdjacentHTML('beforeend', galleryItem);
 }
+let galleryImg = new SimpleLightbox('.gallery a');
 
 function clearGalleryEl() {
   refs.gallery.innerHTML = '';
+}
+
+async function fetchImages() {
+  const images = await imagesApiServer.fetchImage();
+  appendImagesToGallery(images.hits);
+  loadMoreBtn.show();
+  galleryImg.refresh();
 }
 
 async function onFormSubmit(e) {
@@ -53,28 +67,27 @@ async function onFormSubmit(e) {
     imagesApiServer.query = inputValue;
     imagesApiServer.resetPage();
     clearGalleryEl();
-    const images = await imagesApiServer.fetchImage();
     loadMoreBtn.hide();
+    // fetchImages();
+    const images = await imagesApiServer.fetchImage();
+    appendImagesToGallery(images.hits);
+    galleryImg.refresh();
+    loadMoreBtn.show();
 
+    Notify.success(`"Hooray! We found ${images.totalHits} images."`);
     if (images.hits.length === 0) {
       return Notify.failure(
         'Sorry, there are no images matching your search query. Please try again.'
       );
     }
-    Notify.success(`"Hooray! We found ${images.totalHits} images."`);
-    appendImagesToGallery(images.hits);
-    loadMoreBtn.show();
-
-    // console.log(images.hits);
   } catch (error) {
-    Notify.failure(error);
+    Notify.failure(error.message);
+    console.log(error);
   }
 }
 
-async function fetchImages() {
-  const images = await imagesApiServer.fetchImage();
-  appendImagesToGallery(images.hits);
-  loadMoreBtn.show();
+async function loadMoreImages() {
+  fetchImages();
   if (images.hits.length === 0) {
     loadMoreBtn.hide();
     Notify.failure(
@@ -84,6 +97,4 @@ async function fetchImages() {
 }
 
 refs.searchInput.addEventListener('submit', onFormSubmit);
-loadMoreBtn.button.addEventListener('click', fetchImages);
-
-// big yellow flower
+loadMoreBtn.button.addEventListener('click', loadMoreImages);

@@ -6,7 +6,7 @@ export default class ImagesApiServer {
   async fetchImage() {
     const BASE_URL = 'https://pixabay.com/api/';
     const API_KEY = '28875858-be00e402ceba03ed1852ded5b';
-    const url = `${BASE_URL}?key=${API_KEY}&q=${this.searchQuery}&image_type=photo&orientation=horizontal&safesearch=true&page=${this.page}&per_page=5`;
+    const url = `${BASE_URL}?key=${API_KEY}&q=${this.searchQuery}&image_type=photo&orientation=horizontal&safesearch=true&page=${this.page}&per_page=20`;
 
     this.incrementPage();
     const response = await fetch(url);
