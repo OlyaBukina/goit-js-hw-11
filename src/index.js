@@ -1,21 +1,16 @@
 import './css/styles.css';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import ImagesApiServer from './js/search-image';
-import LoadMoreBtn from './js/load-more-btn';
 import SimpleLightbox from 'simplelightbox';
 import '../node_modules/simplelightbox/dist/simple-lightbox.min.css';
 
 const refs = {
   searchInput: document.querySelector('#search-form'),
   gallery: document.querySelector('.gallery'),
+  loadMoreBtn: document.querySelector('.load-more'),
 };
 
 const imagesApiServer = new ImagesApiServer();
-
-const loadMoreBtn = new LoadMoreBtn({
-  selector: '.load-more',
-  hidden: true,
-});
 
 function appendImagesToGallery(images) {
   const galleryItem = images
@@ -46,50 +41,63 @@ function appendImagesToGallery(images) {
 
   refs.gallery.insertAdjacentHTML('beforeend', galleryItem);
 }
-let galleryImg = new SimpleLightbox('.gallery a');
+let ligthdoxGallery = new SimpleLightbox('.gallery a');
 
 function clearGalleryEl() {
   refs.gallery.innerHTML = '';
 }
 
-async function fetchImages() {
+async function getImages() {
   const images = await imagesApiServer.fetchImage();
   appendImagesToGallery(images.hits);
-  loadMoreBtn.show();
-  galleryImg.refresh();
+  refs.loadMoreBtn.classList.remove('is-hidden');
+  ligthdoxGallery.refresh();
+  return images;
 }
 
+function scroll() {
+  const { page, pageSize } = imagesApiServer;
+  const targetItemIndex = (page - 1) * pageSize;
+  const targetItem = refs.gallery.children.item(targetItemIndex);
+  const padding = 15;
+  const currentScrollTop = document.scrollingElement.scrollTop;
+  const targetItemScreenOffsetTop = targetItem.getBoundingClientRect().top;
+
+  window.scroll({
+    top: currentScrollTop + targetItemScreenOffsetTop - padding,
+    behavior: 'smooth',
+  });
+}
 async function onFormSubmit(e) {
   e.preventDefault();
   const inputValue = e.currentTarget.elements.searchQuery.value;
 
+  imagesApiServer.query = inputValue;
+  imagesApiServer.resetPage();
+  clearGalleryEl();
+  refs.loadMoreBtn.classList.add('is-hidden');
   try {
-    imagesApiServer.query = inputValue;
-    imagesApiServer.resetPage();
-    clearGalleryEl();
-    loadMoreBtn.hide();
-    // fetchImages();
-    const images = await imagesApiServer.fetchImage();
-    appendImagesToGallery(images.hits);
-    galleryImg.refresh();
-    loadMoreBtn.show();
+    const images = await getImages();
 
-    Notify.success(`"Hooray! We found ${images.totalHits} images."`);
     if (images.hits.length === 0) {
       return Notify.failure(
         'Sorry, there are no images matching your search query. Please try again.'
       );
     }
+    scroll();
+    Notify.success(`"Hooray! We found ${images.totalHits} images."`);
   } catch (error) {
     Notify.failure(error.message);
-    console.log(error);
+    throw error;
   }
 }
 
 async function loadMoreImages() {
-  fetchImages();
-  if (images.hits.length === 0) {
-    loadMoreBtn.hide();
+  const images = await getImages();
+  scroll();
+
+  if (images.hits.length < imagesApiServer.pageSize) {
+    refs.loadMoreBtn.classList.add('is-hidden');
     Notify.failure(
       "We're sorry, but you've reached the end of search results."
     );
@@ -97,4 +105,4 @@ async function loadMoreImages() {
 }
 
 refs.searchInput.addEventListener('submit', onFormSubmit);
-loadMoreBtn.button.addEventListener('click', loadMoreImages);
+refs.loadMoreBtn.addEventListener('click', loadMoreImages);

@@ -1,18 +1,24 @@
+import axios from 'axios';
+
 export default class ImagesApiServer {
   constructor() {
     this.searchQuery = '';
-    this.page = 1;
+    this.page = 0;
+    this.pageSize = 40;
   }
   async fetchImage() {
+    this.incrementPage();
     const BASE_URL = 'https://pixabay.com/api/';
     const API_KEY = '28875858-be00e402ceba03ed1852ded5b';
-    const url = `${BASE_URL}?key=${API_KEY}&q=${this.searchQuery}&image_type=photo&orientation=horizontal&safesearch=true&page=${this.page}&per_page=20`;
+    const url = `${BASE_URL}?key=${API_KEY}&q=${encodeURIComponent(
+      this.searchQuery
+    )}&image_type=photo&orientation=horizontal&safesearch=true&page=${
+      this.page
+    }&per_page=${this.pageSize}`;
 
-    this.incrementPage();
-    const response = await fetch(url);
     try {
-      const images = await response.json();
-      return images;
+      const images = await axios.get(url);
+      return images.data;
     } catch (error) {
       throw new Error('Sorry, something goes wrong.');
     }
@@ -22,7 +28,7 @@ export default class ImagesApiServer {
   }
 
   resetPage() {
-    this.page = 1;
+    this.page = 0;
   }
   get query() {
     return this.searchQuery;
